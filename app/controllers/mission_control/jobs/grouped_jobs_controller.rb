@@ -6,8 +6,4 @@ class MissionControl::Jobs::GroupedJobsController < MissionControl::Jobs::Applic
       redirect_to jobs_path
     end
   end
-
-  def active_filters?
-    false
-  end
 end
