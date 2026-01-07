@@ -8,7 +8,11 @@ class MissionControl::Jobs::DiscardsController < MissionControl::Jobs::Applicati
 
   private
     def jobs_relation
-      ActiveJob.jobs
+      if params[:status].present?
+        ActiveJob.jobs.with_status(params[:status])
+      else
+        ActiveJob.jobs
+      end
     end
 
     def redirect_location
