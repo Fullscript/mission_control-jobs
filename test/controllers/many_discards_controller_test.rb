@@ -64,4 +64,33 @@ class MissionControl::Jobs::ManyDiscardsControllerTest < ActionDispatch::Integra
     assert_equal 3, ActiveJob.jobs.failed.count
     assert_equal [ @failed_job1.job_id, @failed_job2.job_id, @failed_job3.job_id ].sort, ActiveJob.jobs.failed.map(&:job_id).sort
   end
+
+  test "discards correct failed job when multiple jobs share same active_job_id" do
+    original_job = SolidQueue::Job.find_by(active_job_id: @failed_job1.job_id)
+
+    newer_job = SolidQueue::Job.create!(
+      queue_name: "queue_1",
+      class_name: "FailingJob",
+      active_job_id: @failed_job1.job_id,
+      arguments: { job_class: "FailingJob", arguments: [ 42 ] },
+      finished_at: Time.current
+    )
+
+    assert newer_job.id > original_job.id
+    assert newer_job.finished?
+    assert_not newer_job.failed?
+
+    initial_failed_count = ActiveJob.jobs.failed.count
+    initial_finished_count = ActiveJob.jobs.finished.count
+
+    post mission_control_jobs.application_many_discards_url(@application), params: {
+      job_ids: [ @failed_job1.job_id ]
+    }, headers: { "HTTP_REFERER": @referer }
+
+    assert_equal initial_failed_count - 1, ActiveJob.jobs.failed.count
+    assert_equal initial_finished_count, ActiveJob.jobs.finished.count
+
+    assert_redirected_to @referer
+    assert_equal "Discarded 1 of 1 selected jobs", flash[:notice]
+  end
 end
