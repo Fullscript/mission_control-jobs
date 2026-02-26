@@ -3,6 +3,7 @@ require "test_helper"
 class MissionControl::Jobs::JobsControllerTest < ActionDispatch::IntegrationTest
   setup do
     DummyJob.queue_as :queue_1
+    DummyReloadedJob.queue_as :queue_2
   end
 
   test "get job details" do
@@ -43,24 +44,28 @@ class MissionControl::Jobs::JobsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "get finished jobs filtered by finished_at date" do
-    job = DummyJob.perform_later(42)
-    perform_enqueued_jobs_async
+    [ "UTC", "International Date Line West" ].each do |timezone|
+      Time.use_zone(timezone) do
+        job = DummyJob.perform_later(42)
+        perform_enqueued_jobs_async
 
-    get mission_control_jobs.application_jobs_url(@application, :finished)
-    assert_response :ok
-    assert_select "tr.job", 1
+        get mission_control_jobs.application_jobs_url(@application, :finished)
+        assert_response :ok
+        assert_select "tr.job", 1
 
-    get mission_control_jobs.application_jobs_url(@application, :finished, filter: { finished_at_start: 1.hour.from_now.to_s })
-    assert_response :ok
-    assert_select "tr.job", 0
+        get mission_control_jobs.application_jobs_url(@application, :finished, filter: { finished_at_start: 1.hour.from_now.strftime("%Y-%m-%dT%H:%M") })
+        assert_response :ok
+        assert_select "tr.job", 0
 
-    get mission_control_jobs.application_jobs_url(@application, :finished, filter: { finished_at_start: 1.hour.ago.to_s, finished_at_end: 1.hour.from_now })
-    assert_response :ok
-    assert_select "tr.job", 1
+        get mission_control_jobs.application_jobs_url(@application, :finished, filter: { finished_at_start: 1.hour.ago.strftime("%Y-%m-%dT%H:%M"), finished_at_end: 1.hour.from_now.strftime("%Y-%m-%dT%H:%M") })
+        assert_response :ok
+        assert_select "tr.job", 1
 
-    get mission_control_jobs.application_jobs_url(@application, :finished, filter: { finished_at_end: 1.hour.from_now })
-    assert_response :ok
-    assert_select "tr.job", 1
+        get mission_control_jobs.application_jobs_url(@application, :finished, filter: { finished_at_end: 1.hour.from_now.strftime("%Y-%m-%dT%H:%M") })
+        assert_response :ok
+        assert_select "tr.job", 1
+      end
+    end
   end
 
   test "redirect to queue when job doesn't exist" do
@@ -130,5 +135,39 @@ class MissionControl::Jobs::JobsControllerTest < ActionDispatch::IntegrationTest
     assert_select "tr.job", /DummyJob\s+Enqueued less than 5 seconds ago\s+queue_1\s+in 3 minutes/
   ensure
     I18n.available_locales = previous_locales
+  end
+
+  test "empty string after stripping whitespace does not filter" do
+    DummyJob.perform_later(42)
+    DummyReloadedJob.perform_later(42)
+    perform_enqueued_jobs_async
+
+    get mission_control_jobs.application_jobs_url(@application, :finished, filter: { job_class_name: " \n\t \n\t" })
+    assert_response :ok
+    assert_select "tr.job", 2
+    assert_select "tr.job", /DummyJob/
+    assert_select "tr.job", /DummyReloadedJob/
+  end
+
+  test "get jobs filtered by class name ignoring surrounding white spaces, newlines and tabs" do
+    DummyJob.perform_later(42)
+    DummyReloadedJob.perform_later(42)
+    perform_enqueued_jobs_async
+
+    get mission_control_jobs.application_jobs_url(@application, :finished, filter: { job_class_name: " \n\tDummyJob \n\t" })
+    assert_response :ok
+    assert_select "tr.job", 1
+    assert_select "tr.job", /DummyJob/
+  end
+
+  test "get jobs filtered by queue name ignoring surrounding white spaces, newlines and tabs" do
+    DummyJob.perform_later(42)
+    DummyReloadedJob.perform_later(42)
+    perform_enqueued_jobs_async
+
+    get mission_control_jobs.application_jobs_url(@application, :finished, filter: { queue_name: " \n\tqueue_1 \n\t" })
+    assert_response :ok
+    assert_select "tr.job", 1
+    assert_select "tr.job", /DummyJob/
   end
 end
