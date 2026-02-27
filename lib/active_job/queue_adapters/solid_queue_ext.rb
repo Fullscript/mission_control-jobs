@@ -73,8 +73,12 @@ module ActiveJob::QueueAdapters::SolidQueueExt
     dispatch_immediately find_solid_queue_job!(job.job_id, jobs_relation)
   end
 
-  def find_job(job_id, *)
-    if job = SolidQueue::Job.where(active_job_id: job_id).order(:id).last
+  def find_job(job_id, jobs_relation = nil)
+    if jobs_relation&.status.present?
+      if job = SolidQueueJobs.new(jobs_relation).find_job(job_id)
+        deserialize_and_proxy_solid_queue_job(job, jobs_relation.status)
+      end
+    elsif job = SolidQueue::Job.where(active_job_id: job_id).order(:id).last
       deserialize_and_proxy_solid_queue_job job
     end
   end
@@ -163,9 +167,8 @@ module ActiveJob::QueueAdapters::SolidQueueExt
       end
 
       def find_job(active_job_id)
-        if job = SolidQueue::Job.where(active_job_id: active_job_id).order(:id).last
-          job if matches_relation_filters?(job)
-        end
+        jobs = SolidQueue::Job.where(active_job_id: active_job_id).order(id: :desc)
+        jobs.find { |job| matches_relation_filters?(job) }
       end
 
       def discard_all

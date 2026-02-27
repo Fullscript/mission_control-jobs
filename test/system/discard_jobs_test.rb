@@ -43,7 +43,7 @@ class DiscardJobsTest < ApplicationSystemTestCase
     assert_text /3 jobs found/i
 
     accept_confirm do
-      click_on "Discard selection"
+      click_on "Discard filtered"
     end
 
     assert_text /discarded 3 jobs/i
@@ -57,7 +57,7 @@ class DiscardJobsTest < ApplicationSystemTestCase
     assert_text /5 jobs found/i
 
     accept_confirm do
-      click_on "Discard selection"
+      click_on "Discard filtered"
     end
 
     assert_text /discarded 5 jobs/i
