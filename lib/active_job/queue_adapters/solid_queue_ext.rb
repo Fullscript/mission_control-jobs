@@ -167,12 +167,8 @@ module ActiveJob::QueueAdapters::SolidQueueExt
       end
 
       def find_job(active_job_id)
-        jobs = SolidQueue::Job.where(active_job_id: active_job_id)
-        if solid_queue_status.present? && !solid_queue_status.finished?
-          jobs.find { |job| job.public_send("#{solid_queue_status}?") && matches_queue_name?(job) }
-        elsif job = jobs.order(:id).last
-          job if matches_relation_filters?(job)
-        end
+        jobs = SolidQueue::Job.where(active_job_id: active_job_id).order(id: :desc)
+        jobs.find { |job| matches_relation_filters?(job) }
       end
 
       def discard_all

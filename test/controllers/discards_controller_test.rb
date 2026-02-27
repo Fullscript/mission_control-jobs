@@ -42,9 +42,7 @@ class MissionControl::Jobs::DiscardsControllerTest < ActionDispatch::Integration
     assert_equal 1, ActiveJob.jobs.failed.count
     assert_equal 1, ActiveJob.jobs.finished.count
 
-    assert_difference -> { ActiveJob.jobs.failed.count }, -1 do
-      post mission_control_jobs.application_job_discard_url(@application, failed_job.job_id, status: :failed)
-    end
+    post mission_control_jobs.application_job_discard_url(@application, failed_job.job_id, status: :failed)
 
     assert_equal 0, ActiveJob.jobs.failed.count
     assert_equal 1, ActiveJob.jobs.finished.count
