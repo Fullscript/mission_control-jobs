@@ -9,11 +9,15 @@ module MissionControl::Jobs::JobFilters
 
   private
     def set_filters
-      @job_filters = {
-        job_class_name: params.dig(:filter, :job_class_name).to_s.strip.presence,
-        queue_name: params.dig(:filter, :queue_name).to_s.strip.presence,
-        finished_at: finished_at_range_params
-      }.compact
+      if filtering_disabled?
+        @job_filters = {}
+      else
+        @job_filters = {
+          job_class_name: finished_status? ? nil : params.dig(:filter, :job_class_name).to_s.strip.presence,
+          queue_name: params.dig(:filter, :queue_name).to_s.strip.presence,
+          finished_at: finished_at_range_params
+        }.compact
+      end
     end
 
     def active_filters?
@@ -37,5 +41,13 @@ module MissionControl::Jobs::JobFilters
 
     def parse_with_time_zone(date)
       Time.zone.parse(date) if date.present?
+    end
+
+    def filtering_disabled?
+      %w[in_progress blocked scheduled].include?(params[:status])
+    end
+
+    def finished_status?
+      params[:status] == "finished"
     end
 end

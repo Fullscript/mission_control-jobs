@@ -3,12 +3,14 @@
     data: { controller: "form", action: "input->form#debouncedSubmit" } do |form| %>
 
     <div class="field is-grouped">
-      <div class="control">
-        <%= form.label :job_class_name, class: "label" %>
-        <div class="select is-rounded">
-          <%= form.text_field :job_class_name, value: @job_filters[:job_class_name], class: "input", list: "job-classes", placeholder: "Filter by job class...", autocomplete: "off" %>
+      <% unless jobs_status == "finished" %>
+        <div class="control">
+          <%= form.label :job_class_name, class: "label" %>
+          <div class="select is-rounded">
+            <%= form.text_field :job_class_name, value: @job_filters[:job_class_name], class: "input", list: "job-classes", placeholder: "Filter by job class...", autocomplete: "off" %>
+          </div>
         </div>
-      </div>
+      <% end %>
 
       <div class="control">
         <%= form.label :queue_name, class: "label" %>
