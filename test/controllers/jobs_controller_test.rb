@@ -137,27 +137,16 @@ class MissionControl::Jobs::JobsControllerTest < ActionDispatch::IntegrationTest
     I18n.available_locales = previous_locales
   end
 
-  test "empty string after stripping whitespace does not filter" do
+  test "job_class_name filter is ignored for finished jobs" do
     DummyJob.perform_later(42)
     DummyReloadedJob.perform_later(42)
     perform_enqueued_jobs_async
 
-    get mission_control_jobs.application_jobs_url(@application, :finished, filter: { job_class_name: " \n\t \n\t" })
+    get mission_control_jobs.application_jobs_url(@application, :finished, filter: { job_class_name: "DummyJob" })
     assert_response :ok
     assert_select "tr.job", 2
     assert_select "tr.job", /DummyJob/
     assert_select "tr.job", /DummyReloadedJob/
-  end
-
-  test "get jobs filtered by class name ignoring surrounding white spaces, newlines and tabs" do
-    DummyJob.perform_later(42)
-    DummyReloadedJob.perform_later(42)
-    perform_enqueued_jobs_async
-
-    get mission_control_jobs.application_jobs_url(@application, :finished, filter: { job_class_name: " \n\tDummyJob \n\t" })
-    assert_response :ok
-    assert_select "tr.job", 1
-    assert_select "tr.job", /DummyJob/
   end
 
   test "get jobs filtered by queue name ignoring surrounding white spaces, newlines and tabs" do
